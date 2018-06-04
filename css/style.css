@@ -1,0 +1,22 @@
+.chat {
+    padding: 0;
+}
+
+.chat li {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+}
+
+.chat li.left .chat-body {
+    margin-left: 70px;
+}
+
+.chat li.right .chat-body {
+    text-align: right;
+    margin-right: 70px;
+}
+
+.panel-body {
+    overflow-y: scroll;
+    height: 400px;
+}
