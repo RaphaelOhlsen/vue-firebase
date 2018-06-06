@@ -1,7 +1,10 @@
-var chatComponent = Vue.extend({
-    template: `
+requirejs(['firebase-config'], function(config){
+    var firebaseApp = firebase.initializeApp(config);
+    var db = firebaseApp.database();
+
+    var chatComponent = Vue.extend({
+        template: `
         <style type="text/css" scoped>
-            div{ color: red;}
         
             .chat {
                     padding: 0;
@@ -13,12 +16,12 @@ var chatComponent = Vue.extend({
             }
     
             .chat li.left .chat-body {
-                margin-left: 70px;
+                margin-left: 100px;
             }
     
             .chat li.right .chat-body {
                 text-align: right;
-                margin-right: 70px;
+                margin-right: 100px;
             }
     
             .panel-body {
@@ -32,7 +35,7 @@ var chatComponent = Vue.extend({
             <div class="panel-body">
                 <ul class="chat list-unstyled">
                     <li class="clearfix"
-                        v-bind:class="{left: !isUser(o.email), right: isUser(o.email)}" v-for="o in chat.messages">
+                        v-bind:class="{left: !isUser(o.email), right: isUser(o.email)}" v-for="o in messages">
                         <span v-bind:class="{'pull-left': !isUser(o.email), 'pull-right': isUser(o.email)}">
                             <img src="{{ o.photo }}" class="img-circle" alt="">
                         </span>
@@ -45,58 +48,50 @@ var chatComponent = Vue.extend({
             </div>
             <div class="panel-footer">
                 <div class="input-group">
-                    <input type="text" class="form-control imput-md" placeholder="digite a sua mensagem" />
+                    <input type="text" class="form-control imput-md" 
+                        placeholder="digite a sua mensagem" v-model="message" />
                     <span class="input-group-btn">
-                        <button class="btn btn-success btn-md">Enviar</button>
+                        <button class="btn btn-success btn-md" @click="sendMessage">Enviar</button>
                     </span>
                 </div>
             </div>
-         </div> 
+        </div> 
     `,
-    data: function() {
-        return {
-            user: {
-                email: 'argentinaraphael@gmail.com',
-                neme: 'Raphael'
+        created: function(){
+            var roomRef = 'chat/rooms/' + this.$route.params.room;
+            this.$bindAsArray('messages', db.ref(roomRef + '/messages'));
+        },
+        data: function() {
+            return {
+                user: {
+                    email: localStorage.getItem('email'),
+                    name: localStorage.getItem('name'),
+                    photo: localStorage.getItem('photo')
+                },
+
+                message: '',
+
+            };
+        },
+        methods: {
+            isUser: function (email) {
+                return this.user.email == email;
             },
-
-            chat: {
-                messages: [
-                    {
-                        email: "fulano@gmail.com",
-                        text: "Olá, eu sou o Fulano, como vcê está?",
-                        name: "Fulano",
-                        photo: "http://placehold.it/50/000FFF/fff&text=00"
-
-                    },
-
-                    {
-                        email: "argentinaraphael@gmail.com",
-                        text: "Estou jóia, meu nome é Raphael",
-                        name: "Raphael",
-                        photo: "http://placehold.it/50/777FFF/000&text=EU"
-
-                    },
-                    {
-                        email: "fulano@gmail.com",
-                        text: "Em qual cidade você mora?",
-                        name: "Raphael",
-                        photo: "http://placehold.it/50/777FFF/000&text=EU"
-
-                    }
-                ]
+            sendMessage: function (){
+                this.$firebaseRefs.messages.push({
+                    name: this.user.name,
+                    email: this.user.email,
+                    text: this.message,
+                    photo: this.user.photo
+                });
+                this.message = "";
             }
-        };
-    },
-    methods: {
-        isUser: function (email) {
-            return this.user.email == email;
         }
-    }
-});
+    });
 
-var roomsComponent = Vue.extend({
-    template: `
+
+    var roomsComponent = Vue.extend({
+        template: `
     <div class="col-md-4" v-for="o in rooms">
         <div class="panel panel-primary">
             <div class="panel-heading text-center">
@@ -104,42 +99,122 @@ var roomsComponent = Vue.extend({
             </div>
             <div class="panel-body text-center">
                 {{ o.description }}
-                <p><a href="javascript:void(0)" v-on:click="goToChat">Entrar</a></p>
+                <p><a href="javascript:void(0)" @click="opemModal(o)">Entrar</a></p>
             </div>
         </div>
     </div>
+    <div class="modal fade" id="modalLoginEmail" tabindex="-1" role="dialog" aria-labelledby="modalLoginEmail">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Entre com as informações</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <input type="text" class="form-control" name="email" v-model="email" placeholder="E-mail">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="form-control" name="name" v-model="name" placeholder="Nome">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" @click="login">Login</button>
+            </div>
+        </div>
+    </div>   
     `,
-    data:function(){
-        return {
-            rooms: [
-                {id: "001", name: "PHP", description: "Entusiasta do PHP"},
-                {id: "002", name: "Java", description: "Developer experts"},
-                {id: "003", name: "C#", description: "Os caras do C#"},
-                {id: "004", name: "C++", description: "Fissurados por programação"},
-                {id: "005", name: "Javascript", description: "Olha a web aí!"},
-                {id: "006", name: "Vue.js", description: "Chat dos caras do data-binding"}
-            ]
-        };
-    },
-    methods: {
-        goToChat: function(){
-            this.$router.router.go('/chat')
-            // console.log('teste');
+        firebase: {
+            rooms: db.ref('chat/rooms')
+        },
+        data:function(){
+            return {
+                rooms: [
+                    {id: "001", name: "PHP", description: "Entusiasta do PHP"},
+                    {id: "002", name: "Java", description: "Developer experts"},
+                    {id: "003", name: "C#", description: "Os caras do C#"},
+                    {id: "004", name: "C++", description: "Fissurados por programação"},
+                    {id: "005", name: "Javascript", description: "Olha a web aí!"},
+                    {id: "006", name: "Vue.js", description: "Chat dos caras do data-binding"}
+                ],
+                name: '',
+                email: '',
+                room: null
+            };
+        },
+        methods: {
+            login: function(room){
+                localStorage.setItem('name', this.name);
+                localStorage.setItem('email', this.email);
+                localStorage.setItem('photo','http://www.gravatar.com/avatar/' + md5(this.email)+'.jpg');
+                $('#modalLoginEmail').modal('hide');
+                this.$route.router.go('/chat/' + this.room.id);
+            },
+            opemModal: function (room) {
+                this.room = room;
+                $('#modalLoginEmail').modal('show');
+            }
         }
-    }
-});
+    });
 
-var appComponent = Vue.extend({});
 
-var router = new VueRouter();
 
-router.map({
-    '/chat': {
-        component: chatComponent
-    },
-    '/rooms': {
-        component: roomsComponent
-    }
-});
+    var rooms = [
+        {id: "001", name: "PHP", description: "Entusiasta do PHP"},
+        {id: "002", name: "Java", description: "Developer experts"},
+        {id: "003", name: "C#", description: "Os caras do C#"},
+        {id: "004", name: "C++", description: "Fissurados por programação"},
+        {id: "005", name: "Javascript", description: "Olha a web aí!"},
+        {id: "006", name: "Vue.js", description: "Chat dos caras do data-binding"}
+    ];
 
-router.start(appComponent,"#app");
+
+    var roomsCreateComponent = Vue.extend({
+        template: `
+        <ul>
+            <li v-for="o in rooms">
+                {{ o.name }}
+            </li>    
+        </ul>
+    `,
+        firebase: {
+            rooms: db.ref('chat/rooms')
+        },
+        ready: function(){
+            var chatRef = db.ref('chat');
+            var roomsChildren = chatRef.child('rooms');
+            rooms.forEach(function (room) {
+                roomsChildren.child(room.id).set({
+                    name: room.name,
+                    description: room.description
+                });
+            })
+        },
+
+    });
+
+
+    var appComponent = Vue.extend({});
+
+    var router = new VueRouter();
+
+    router.map({
+        '/chat/:room': {
+            component: chatComponent
+        },
+        '/rooms': {
+            component: roomsComponent
+        },
+        '/rooms-create': {
+            component: roomsCreateComponent
+        }
+    });
+
+    router.start(appComponent,"#app");
+
+
+})
+
